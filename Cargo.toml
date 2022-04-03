@@ -1,0 +1,6 @@
+[workspace]
+members = ["chainloader", "xmodem"]
+exclude = ["xtask"]
+
+[profile.release]
+strip = true
