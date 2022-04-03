@@ -53,7 +53,7 @@ SECTIONS {
     .plt : { *(.plt) *(.iplt) }
     .plt.got : { *(.plt.got) }
     .plt.sec : { *(.plt.sec) }
-    .dynamic : { *(.dynamic) }
+    .dynamic : { PROVIDE(__dynamic = .); *(.dynamic) }
     .got : { *(.got) *(.igot) }
     .got.plt : { *(.got.plt) *(.igot.plt) }
 

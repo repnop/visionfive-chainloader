@@ -1,4 +1,7 @@
-use std::io::Write;
+#![no_std]
+
+#[cfg(feature = "std")]
+extern crate std;
 
 use bytemuck::Zeroable;
 
@@ -40,9 +43,10 @@ impl<S> From<S> for Error<S> {
     }
 }
 
+#[cfg(feature = "std")]
 impl<S: core::fmt::Display + core::fmt::Debug> std::error::Error for Error<S> {}
 impl<S: core::fmt::Display + core::fmt::Debug> core::fmt::Display for Error<S> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::BadPacketId => write!(f, "bad XMODEM packet ID"),
             Self::BadPacketType(n) => write!(f, "bad XMODEM packet type {:#x}", n),
@@ -65,14 +69,17 @@ impl<S: SerialDevice> Sender<S> {
         }
     }
 
-    pub fn send(&mut self, data: &[u8]) -> Result<(), Error<S::Error>> {
+    pub fn send(
+        &mut self,
+        data: &[u8],
+        mut progress: impl FnMut(usize, usize),
+    ) -> Result<(), Error<S::Error>> {
         let mut id = 1;
         match self.device.read()? {
             CHECKSUM_REQUEST => {}
             ty => return Err(Error::BadPacketType(ty)),
         }
 
-        let chunk_count = data.len() / 128 + 1;
         for (i, chunk) in data.chunks(128).enumerate() {
             self.buffer.r#type = START_OF_HEADER;
             self.buffer.id = id;
@@ -87,27 +94,17 @@ impl<S: SerialDevice> Sender<S> {
 
                 match self.device.read()? {
                     ACK => break,
-                    NAK => {
-                        println!("NAK'd, retrying...");
-                        continue;
-                    }
+                    NAK => continue,
                     CANCEL => return Err(Error::Canceled),
                     ty => return Err(Error::BadPacketType(ty)),
                 }
             }
 
             id = id.wrapping_add(1);
-            print!("\x1B[0K\r[");
-            let percent = i as f32 / chunk_count as f32 * 10.0;
-            for i in 1..11 {
-                if percent > i as f32 {
-                    print!("=");
-                } else {
-                    print!(" ");
-                }
+
+            if i % 10 == 0 || i == data.len() / 128 {
+                progress(i * 128, data.len());
             }
-            print!("]");
-            let _ = std::io::stdout().flush();
         }
 
         self.device.write(END_OF_TRANSMISSION)?;

@@ -1,5 +1,5 @@
 [alias]
-xtask = "run --manifest-path ./xtask/Cargo.toml --"
+xtask = "run --release --manifest-path ./xtask/Cargo.toml --"
 
 [target.riscv64imac-unknown-none-elf]
 rustflags = "-C link-arg=-Trv64.lds -C relocation-model=pic -C link-arg=--pie"

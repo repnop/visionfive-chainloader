@@ -138,7 +138,40 @@ fn flash_chainloader(serial: File) -> Result<(), Box<dyn std::error::Error>> {
     let mut sender = xmodem::Sender::new(FileSend(write));
 
     let contents = std::fs::read("build/fw_payload.bin.out")?;
-    sender.send(&contents[..])?;
+    println!();
+    sender.send(&contents[..], |current, total| {
+        print!("\x1B[0K\r[");
+        let percent = current as f32 / total as f32 * 10.0;
+        for i in 1..11 {
+            if percent > i as f32 {
+                print!("=");
+            } else {
+                print!(" ");
+            }
+        }
+
+        const UNITS: &[&str] = &["B", "KiB", "MiB", "GiB"];
+        let mut transferred = current as f32;
+        let mut transferred_unit = 0;
+        let mut total = total as f32;
+        let mut total_unit = 0;
+
+        while transferred / 1024.0 > 1.0 {
+            transferred /= 1024.0;
+            transferred_unit += 1;
+        }
+
+        while total / 1024.0 > 1.0 {
+            total /= 1024.0;
+            total_unit += 1;
+        }
+
+        print!(
+            "] {transferred:.02} {} / {total:.02} {}",
+            UNITS[transferred_unit], UNITS[total_unit]
+        );
+        let _ = std::io::stdout().flush();
+    })?;
 
     println!("\nPayload sent, took: {:?}", now.elapsed());
 

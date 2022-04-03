@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 bytemuck = { version = "1.9.1", features = ["derive"] }
+
+[features]
+std = []
